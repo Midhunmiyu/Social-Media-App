@@ -90,7 +90,36 @@ def user_image_directory_path(instance, filename):
 class Profile(models.Model):
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
     image = models.ImageField(upload_to=user_image_directory_path,blank=True,null=True)
+    bio = models.TextField(null=True,blank=True)
 
     def __str__(self):
         return f'{self.user.username} profile'
 
+class UserProfessionalData(models.Model):
+    user_profile = models.ForeignKey(Profile,on_delete=models.CASCADE,related_name='user_professional_data')
+    job = models.CharField(max_length=155,null=True,blank=True)
+    company = models.CharField(max_length=155,null=True,blank=True)
+    start_date = models.DateField(null=True,blank=True)
+    end_date = models.DateField(null=True,blank=True)
+    still_working = models.BooleanField(default=False)
+    self_employed = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.user_profile.user.username
+
+
+class UserEducationalData(models.Model):
+    user_profile = models.ForeignKey(Profile,on_delete=models.CASCADE,related_name='user_educational_data')
+    course = models.CharField(max_length=255,null=True,blank=True)
+    school = models.CharField(max_length=255,null=True,blank=True)
+    university = models.CharField(max_length=255,null=True,blank=True)
+    start_date = models.DateField(null=True,blank=True)
+    end_date = models.DateField(null=True,blank=True)
+    still_studying = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.user_profile.user.username

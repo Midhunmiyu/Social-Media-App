@@ -5,23 +5,106 @@ from rest_framework import status
 from rest_framework.views import APIView
 from user.renderers import UserRenderer
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.permissions import AllowAny,IsAuthenticated
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from django.contrib.auth import authenticate,login,logout
 
 
-#creating simple jwt token manually
-def get_tokens_for_user(user):
-    refresh = RefreshToken.for_user(user)
-
-    return {
-        'refresh': str(refresh),
-        'access': str(refresh.access_token),
-    }
 
 class RegistrationView(APIView):
     renderer_classes = [UserRenderer]
+    permission_classes = [AllowAny]
+
     def post(self, request):
         serializer = UserCreateSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
-            token = get_tokens_for_user(user)
-            return Response({'status': 'success','message': 'User created Successfully', 'token': token, 'data': serializer.data}, status=status.HTTP_201_CREATED)
+            refresh = RefreshToken.for_user(user)
+            access_token = str(refresh.access_token)
+            refresh_token = str(refresh)
+            return Response({'status': 'success','message': 'User created Successfully', 'access_token': access_token, 'refresh_token': refresh_token, 'data': serializer.data}, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+
+class LoginView(APIView):
+    renderer_classes = [UserRenderer]
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        username = request.data['username']
+        password = request.data['password']
+        try:
+            user = authenticate(request, username=username, password=password)
+            if user is not None:
+                refresh = RefreshToken.for_user(user)
+                access_token = str(refresh.access_token)
+                refresh_token = str(refresh)
+                return Response({'status': 'success','message': 'Login successfully', 'access_token': access_token, 'refresh_token': refresh_token}, status=status.HTTP_200_OK)
+            else:
+                return Response({'status': 'error','message': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
+        except Exception as e:
+            return Response({'status': 'error','message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+
+class LogoutView(APIView):
+    renderer_classes = [UserRenderer]
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+
+    def post(self, request):
+        # print(request.data,'data*********')
+        try:
+            refresh_token = request.data['refresh_token']
+            token = RefreshToken(refresh_token)
+            token.blacklist()
+            return Response({'status': 'success','message': 'Logout successfully'}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'status': 'error','message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+
+class ProfileView(APIView):
+    renderer_classes = [UserRenderer]
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+
+    def get(self, request):
+        try:
+            user = request.user
+            serializer = ProfileSerializer(user.profile)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'status': 'error','message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+    def patch(self, request):
+        try:
+            user = request.user
+            profile = user.profile
+            data = request.data
+            # print(data,'data******')
+            
+            serializer = ProfileSerializer(profile, data=data, partial=True)
+            
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class ChangeProfilePictureView(APIView):
+    renderer_classes = [UserRenderer]
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+
+    def patch(self, request):
+        try:
+            user = request.user
+            profile = user.profile
+            data = request.data
+            serializer = ChangeProflePictureSerializer(profile, data=data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response({'status': 'success', 'message': 'Profile picture updated successfully', 'data': serializer.data}, status=status.HTTP_200_OK) 
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

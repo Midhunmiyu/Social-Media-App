@@ -4,17 +4,19 @@ import json
 class UserRenderer(renderers.JSONRenderer):
     charset='utf-8'
     def render(self, data, accepted_media_type=None, renderer_context=None):
-        response = ''
-        if 'ErrorDetail' in str(data):
-            # Flatten the non_field_errors and other field errors into a single message
-            if isinstance(data, dict) and 'non_field_errors' in data:
-                response = json.dumps({'errors': ' '.join(data['non_field_errors'])})
-            if isinstance(data, dict) and 'username' in data:
-                response = json.dumps({'errors': ' '.join(data['username'])})
-            if isinstance(data, dict) and 'email' in data:
-                response = json.dumps({'errors': ' '.join(data['email'])})
-            else:
-                response = json.dumps({'errors': data})
-        else:
-            response = json.dumps(data)
-        return response
+        response = {}
+        
+        # Check if there are errors
+        if isinstance(data, dict) and 'non_field_errors' in data:
+            # Collect non_field_errors
+            response['errors'] = ' '.join(data['non_field_errors'])
+        elif isinstance(data, dict) and 'errors' in data:
+            # Flatten the specific errors
+            for field, messages in data['errors'].items():
+                response['errors'] = response.get('errors', '') + ' '.join(messages) + ' '
+        
+        # If there are still no errors, return the original data
+        if not response:
+            response = data
+
+        return json.dumps(response)
