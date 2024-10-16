@@ -71,10 +71,20 @@ class ProfileSerializer(serializers.ModelSerializer):
     user_professional_data = UserProfessionalDataSerializer(many=True)
     user_educational_data = UserEducationalDataSerializer(many=True)
     user = UserSerializer()
+    followers_count = serializers.SerializerMethodField()
+    following_count = serializers.SerializerMethodField()
     
     class Meta:
         model = Profile
-        fields = ['user', 'image','bio', 'user_professional_data', 'user_educational_data']
+        fields = ['user', 'image','bio', 'user_professional_data', 'user_educational_data', 'followers_count', 'following_count']
+
+     # Method to get the followers count
+    def get_followers_count(self, obj):
+        return obj.user.followers.count()  # 'followers' is the reverse relation from the following field
+
+    # Method to get the following count
+    def get_following_count(self, obj):
+        return obj.user.following.count()
 
     def validate(self, data):
         # print(data,'data***********')
@@ -180,3 +190,30 @@ class ChangeProflePictureSerializer(serializers.ModelSerializer):
         instance.image = validated_data.get('image', instance.image)
         instance.save()
         return instance
+    
+
+class FollowRequestSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FollowRequest
+        fields = ['id','to_user', 'status']
+
+    def validate(self, data):
+        from_user = self.context['from_user']
+        to_user = data.get('to_user')
+        # print(to_user,'to_user**********')
+        if not CustomUser.objects.filter(id=to_user.id).exists():
+            raise serializers.ValidationError("User does not exist.")
+        if FollowRequest.objects.filter(from_user=from_user, to_user=to_user).exists():
+            raise serializers.ValidationError("You have already sent a follow request to this user.")
+        if from_user == to_user:
+            print(from_user,'from_user')
+            print(to_user,'to_user')
+            raise serializers.ValidationError("You cannot follow yourself.")
+        return data
+    
+    def create(self, validated_data):
+        from_user = self.context['from_user']
+        to_user = validated_data.get('to_user')
+        # print(from_user,to_user)
+        follow_request = FollowRequest.objects.create(from_user=from_user, to_user=to_user)
+        return follow_request

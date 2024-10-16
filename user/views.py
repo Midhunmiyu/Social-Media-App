@@ -35,6 +35,7 @@ class LoginView(APIView):
         password = request.data['password']
         try:
             user = authenticate(request, username=username, password=password)
+            # print(user,'user**********')
             if user is not None:
                 refresh = RefreshToken.for_user(user)
                 access_token = str(refresh.access_token)
@@ -91,6 +92,7 @@ class ProfileView(APIView):
         except Exception as e:
             return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
 class ChangeProfilePictureView(APIView):
     renderer_classes = [UserRenderer]
     permission_classes = [IsAuthenticated]
@@ -108,3 +110,52 @@ class ChangeProfilePictureView(APIView):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+
+class FollowRequestView(APIView):
+    renderer_classes = [UserRenderer]
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+
+    def get(self, request):
+        try:
+            user = request.user
+            follow_requests = FollowRequest.objects.filter(to_user=user)
+            serializer = FollowRequestSerializer(follow_requests, many=True)
+            follow_request_count = follow_requests.count()
+            return Response({'status':'success','count':follow_request_count,'data':serializer.data}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def post(self, request):
+        try:
+            user = request.user
+            # print(user,'user**********')
+            data = request.data
+            # print(data,'data******')
+            serializer = FollowRequestSerializer(data=data,context={'from_user':user})
+            if serializer.is_valid():
+                serializer.save()
+                return Response({'status': 'success', 'message': 'Follow request sent successfully', 'data': serializer.data}, status=status.HTTP_200_OK)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class AcceptFollowRequestView(APIView):
+    renderer_classes = [UserRenderer]
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+
+    def post(self, request):
+        try:
+            user = request.user
+            data = request.data
+            follow_request = FollowRequest.objects.get(id=data['follow_request_id'])
+            follow_request.status = 'accepted'
+            follow_request.save()
+            follow_request.from_user.following.add(follow_request.to_user)
+            return Response({'status': 'success', 'message': 'Follow request accepted successfully'}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+
