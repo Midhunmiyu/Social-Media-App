@@ -9,7 +9,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CustomUser
-        fields = ['username', 'email', 'first_name', 'last_name', 'phone', 'gender', 'dob', 'tc','password', 'password2']
+        fields = ['id','username', 'email', 'first_name', 'last_name', 'phone', 'gender', 'dob', 'tc','password', 'password2']
         # extra_kwargs = {'password': {'write_only': True}}
 
     def validate(self, data):
@@ -52,18 +52,18 @@ class UserCreateSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
-        fields = ['username', 'email', 'first_name', 'last_name', 'phone', 'gender', 'dob', 'tc']
+        fields = ['id','username', 'email', 'first_name', 'last_name', 'phone', 'gender', 'dob', 'tc']
 
 class UserProfessionalDataSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserProfessionalData
-        fields = ('user_profile', 'job', 'company', 'start_date', 'end_date', 'still_working', 'self_employed', )
+        fields = ('id','user_profile', 'job', 'company', 'start_date', 'end_date', 'still_working', 'self_employed', )
         read_only_fields = ('user_profile',)
 
 class UserEducationalDataSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserEducationalData
-        fields = ('user_profile', 'course', 'school', 'university', 'start_date', 'end_date', 'still_studying', )
+        fields = ('id','user_profile', 'course', 'school', 'university', 'start_date', 'end_date', 'still_studying', )
         read_only_fields = ('user_profile',)
 
 
@@ -76,7 +76,7 @@ class ProfileSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Profile
-        fields = ['user', 'image','bio', 'user_professional_data', 'user_educational_data', 'followers_count', 'following_count']
+        fields = ['id','user', 'image','bio', 'user_professional_data', 'user_educational_data', 'followers_count', 'following_count']
 
      # Method to get the followers count
     def get_followers_count(self, obj):
@@ -174,7 +174,7 @@ class ProfileSerializer(serializers.ModelSerializer):
 class ChangeProflePictureSerializer(serializers.ModelSerializer):
     class Meta:
         model = Profile
-        fields = ['user','image']
+        fields = ['id','user','image']
 
     def validate(self, data):
         image = data.get('image', None)
@@ -193,6 +193,7 @@ class ChangeProflePictureSerializer(serializers.ModelSerializer):
     
 
 class FollowRequestSerializer(serializers.ModelSerializer):
+    to_user = UserSerializer()
     class Meta:
         model = FollowRequest
         fields = ['id','to_user', 'status']
@@ -217,3 +218,18 @@ class FollowRequestSerializer(serializers.ModelSerializer):
         # print(from_user,to_user)
         follow_request = FollowRequest.objects.create(from_user=from_user, to_user=to_user)
         return follow_request
+    
+
+class FollowersListSerializer(serializers.ModelSerializer):
+    from_user = UserSerializer()
+    # to_user = UserSerializer()
+    class Meta:
+        model = FollowRequest
+        fields = ['id','from_user','status']
+
+
+class FollowingListSerializer(serializers.ModelSerializer):
+    to_user = UserSerializer()
+    class Meta:
+        model = FollowRequest
+        fields = ['id','to_user','status']

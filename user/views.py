@@ -68,6 +68,7 @@ class ProfileView(APIView):
     permission_classes = [IsAuthenticated]
     authentication_classes = [JWTAuthentication]
 
+
     def get(self, request):
         try:
             user = request.user
@@ -159,3 +160,56 @@ class AcceptFollowRequestView(APIView):
             return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
 
+class FollowersView(APIView):
+    renderer_classes = [UserRenderer]
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+
+    def get(self, request):
+        try:
+            user = request.user
+            # print(user,'user**********')
+            followers = FollowRequest.objects.filter(to_user=user)
+            serializer = FollowersListSerializer(followers, many=True)
+            return Response({'status': 'success', 'data': serializer.data}, status=status.HTTP_200_OK)
+        except Exception as e:  
+            return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+class FollowingView(APIView):
+    renderer_classes = [UserRenderer]
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+
+    def get(self, request):
+        try:
+            user = request.user
+            # print(user,'user**********')
+            following = FollowRequest.objects.filter(from_user=user)
+            serializer = FollowingListSerializer(following, many=True)
+            return Response({'status': 'success', 'data': serializer.data}, status=status.HTTP_200_OK)
+        except Exception as e:  
+            return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+
+class UnFollowView(APIView):
+    renderer_classes = [UserRenderer]
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+
+    def post(self, request):
+        try:
+            user = request.user
+            data = request.data
+            try:
+                follow_request = FollowRequest.objects.get(id=data['follow_request_id'])
+                if follow_request.from_user == user:
+                    follow_request.delete()
+                    follow_request.from_user.following.remove(follow_request.to_user)
+                    return Response({'status': 'success', 'message': 'Unfollowed successfully'}, status=status.HTTP_200_OK)
+                else:
+                    return Response({'status': 'error', 'message': 'You are not authorized to unfollow this user'}, status=status.HTTP_400_BAD_REQUEST)
+            except FollowRequest.DoesNotExist:
+                return Response({'status': 'error', 'message': 'Follow request does not exist'}, status=status.HTTP_400_BAD_REQUEST)
+                
+        except Exception as e:
+            return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

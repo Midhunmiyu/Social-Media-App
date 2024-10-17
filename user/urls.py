@@ -12,4 +12,7 @@ urlpatterns = [
      path('change-profile-picture/', ChangeProfilePictureView.as_view()),
      path('follow-request/', FollowRequestView.as_view()),
      path('accept-follow-request/', AcceptFollowRequestView.as_view()),
+     path('followers/', FollowersView.as_view()),
+     path('following/', FollowingView.as_view()),
+     path('unfollow/', UnFollowView.as_view()),
 ]
