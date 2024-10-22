@@ -94,7 +94,7 @@ class ProfileSerializer(serializers.ModelSerializer):
             if file_extension.lower() not in ['.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif']:
                 raise serializers.ValidationError("Image should have one of the following extensions: .jpg, .jpeg, .png, .webp, .heic, .heif")
             if image.size > 5242880:  # 5MB
-                raise serializers.ValidationError("Image size should not exceed 1MB")
+                raise serializers.ValidationError("Image size should not exceed 5MB")
         bio = data.get('bio', None)
         if bio and len(bio) > 100:
             raise serializers.ValidationError("Bio should not exceed 100 characters")
