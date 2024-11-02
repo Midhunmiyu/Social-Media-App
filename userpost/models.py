@@ -31,3 +31,21 @@ class PostMedia(models.Model):
 
     def __str__(self):
         return f'Media for {self.user_post.id} - {self.media_type}'
+    
+
+class Comment(models.Model):
+    user_post = models.ForeignKey(Posts,on_delete=models.CASCADE,related_name='post_comments')
+    commented_by = models.ForeignKey(CustomUser,on_delete=models.CASCADE,related_name='comments')
+    comment_text = models.TextField(null=True,blank=True)
+    commented_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.commented_by.username}'s comment on {self.user_post.id}"
+
+class Like(models.Model):
+    user_post = models.ForeignKey(Posts,on_delete=models.CASCADE,related_name='post_like')
+    liked_by = models.ForeignKey(CustomUser,on_delete=models.CASCADE,related_name='likes')
+    liked_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user_post.user.username} likes {self.user_post.id}"
