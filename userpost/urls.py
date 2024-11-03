@@ -7,4 +7,5 @@ urlpatterns = [
     path('posts/',PostCreateView.as_view()),
     path('likes/',PostLikeView.as_view()),
     path('comments/',CommentView.as_view()),
+    path('reply-comments/',ReplyCommentView.as_view()),
 ]

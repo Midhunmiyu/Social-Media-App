@@ -118,10 +118,19 @@ class LikeSerializer(serializers.ModelSerializer):
         like = Like(user_post=post,liked_by=liked_by)
         like.save()
         return like
+    
+class ReplyCommentSerializer(serializers.ModelSerializer):
+    replied_by = UserSerializer(read_only=True)
+    class Meta:
+        model = ReplyComment
+        fields = ['id','comment', 'replied_by', 'reply_text', 'replied_at']
+        read_only_fields = ['replied_by']
+
 
 
 class CommentSerializer(serializers.ModelSerializer):
     commented_by = UserSerializer(read_only=True)
+   
     class Meta:
         model = Comment
         fields = ['id','user_post','comment_text','commented_by','commented_at']
@@ -153,6 +162,13 @@ class CommentSerializer(serializers.ModelSerializer):
         comment = Comment(user_post=post,comment_text=comment_text,commented_by=commented_by)
         comment.save()
         return comment
+    
+    def to_representation(self,instance):
+        representation = super().to_representation(instance)
+        replies = ReplyCommentSerializer(instance.replies.all(),many=True).data
+        representation['replies_count'] = len(replies) 
+        representation['replies'] = replies
+        return representation 
 
 class EditCommentSerializer(serializers.ModelSerializer):
     class Meta:
@@ -170,7 +186,58 @@ class EditCommentSerializer(serializers.ModelSerializer):
         return data
     
     def update(self,instance,validated_data):
-        print(validated_data,'validated_data*****')
+        # print(validated_data,'validated_data*****')
         instance.comment_text = validated_data.get('comment_text')
         instance.save()
         return instance
+
+
+   
+class ReplyCommentCreateSerializer(serializers.ModelSerializer):
+    replied_by = UserSerializer(read_only=True)
+    class Meta:
+        model = ReplyComment
+        fields = ['id','comment', 'replied_by', 'reply_text', 'replied_at']
+        read_only_fields = ['replied_by']
+
+    def validate(self,data):
+        reply_text = data.get('reply_text')
+            
+        if not reply_text:
+            raise serializers.ValidationError('please provide reply text...!!')
+        if len(reply_text) > 100:
+            raise serializers.ValidationError('reply text should not exceed 100 characters...!!')
+        return data
+    
+
+    def create(self,validated_data):
+        print(validated_data,'validated_data*****')
+        reply_text = validated_data.get('reply_text')
+        replied_by = self.context['user']
+        comment = validated_data.get('comment')
+        reply = ReplyComment(comment=comment,reply_text=reply_text,replied_by=replied_by)
+        reply.save()
+        return reply
+    
+class ReplyCommentEditSerializer(serializers.ModelSerializer):
+    replied_by = UserSerializer(read_only=True)
+    class Meta:
+        model = ReplyComment
+        fields = ['id','comment', 'replied_by', 'reply_text', 'replied_at']
+        read_only_fields = ['replied_by']
+
+    def validate(self,data):
+        reply_text = data.get('reply_text')
+            
+        if not reply_text:
+            raise serializers.ValidationError('please provide reply text...!!')
+        if len(reply_text) > 100:
+            raise serializers.ValidationError('reply text should not exceed 100 characters...!!')
+        return data
+    
+    def update(self,instance,validated_data):
+        instance.reply_text = validated_data.get('reply_text')
+        instance.save()
+        return instance
+
+    

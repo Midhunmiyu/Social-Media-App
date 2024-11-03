@@ -182,3 +182,64 @@ class CommentView(APIView):
             return Response({'status':'success','message':'deleted comment successfully'},status=status.HTTP_200_OK)
         except Exception as e:
             return Response({'status':'error','message':str(e)},status=status.HTTP_500_INTERNAL_SERVER_ERROR)  
+        
+class ReplyCommentView(APIView):
+    renderer_classes = [UserRenderer]
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+
+    def get(self,request):
+        try:
+            comment_id = request.query_params.get('comment_id')
+            comment = Comment.objects.filter(id=comment_id).first()
+            if not comment:
+                return Response({'status': 'error', 'message': 'Comment not found'}, status=status.HTTP_404_NOT_FOUND)
+            replies = ReplyComment.objects.filter(comment=comment)
+            serializers = ReplyCommentSerializer(replies,many=True)
+            return Response({'status':'success','data':serializers.data},status=status.HTTP_200_OK)
+        except Exception as e :
+            return Response({'status':'error','message':str(e)},status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+    def post(self,request):
+        try:
+            data = request.data
+            user = request.user
+            serializers = ReplyCommentCreateSerializer(data=data,context={'user':user})
+            if serializers.is_valid():
+                serializers.save()
+                return Response({'status':'success','message':'replied comment successfully','data':serializers.data},status=status.HTTP_200_OK)
+            return Response(serializers.errors,status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e :
+            return Response({'status':'error','message':str(e)},status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+
+    def patch(self,request):
+        try:
+            data = request.data
+            user = request.user
+            reply_id = request.query_params.get('reply_id')
+            if not reply_id:
+                return Response({'status': 'error', 'message': 'Please provide reply id..!!'}, status=status.HTTP_404_NOT_FOUND)
+            reply = ReplyComment.objects.filter(id=reply_id,replied_by=user).first()
+            if not reply:
+                return Response({'status': 'error', 'message': 'Reply not found or does not belong to you'}, status=status.HTTP_404_NOT_FOUND)
+            serializers = ReplyCommentEditSerializer(reply,data=data,partial=True)
+            if serializers.is_valid():
+                serializers.save()
+                return Response({'status':'success','message':'updated comment successfully','data':serializers.data},status=status.HTTP_200_OK)
+            return Response(serializers.errors,status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e :
+            return Response({'status':'error','message':str(e)},status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+    def delete(self,request):
+        try:
+            reply_id = request.query_params.get('reply_id')
+            reply = ReplyComment.objects.filter(id=reply_id).first()
+            if not reply:
+                return Response({'status': 'error', 'message': 'Reply not found'}, status=status.HTTP_404_NOT_FOUND)
+            reply.delete()
+            return Response({'status':'success','message':'deleted comment successfully'},status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'status':'error','message':str(e)},status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        

@@ -19,3 +19,7 @@ class CommentAdmin(admin.ModelAdmin):
 @admin.register(Like)
 class LikeAdmin(admin.ModelAdmin):
     list_display = ['id','user_post','liked_by','liked_at']
+
+@admin.register(ReplyComment)
+class ReplyCommentAdmin(admin.ModelAdmin):
+    list_display = ['id','comment','replied_by','reply_text','replied_at']
