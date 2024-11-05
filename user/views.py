@@ -8,6 +8,8 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.permissions import AllowAny,IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.contrib.auth import authenticate,login,logout
+from user.paginations import CustomPagination
+from django.db.models import Q
 
 
 
@@ -59,6 +61,23 @@ class LogoutView(APIView):
             token = RefreshToken(refresh_token)
             token.blacklist()
             return Response({'status': 'success','message': 'Logout successfully'}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'status': 'error','message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+class ResetPasswordView(APIView):
+    renderer_classes = [UserRenderer]
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+
+    def patch(self, request):
+        try:
+            user = request.user
+            data = request.data
+            serializer = ResetPasswordSerializer(user, data=data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response({'status': 'success','message': 'Password reset successfully'}, status=status.HTTP_200_OK)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             return Response({'status': 'error','message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
@@ -121,10 +140,21 @@ class FollowRequestView(APIView):
     def get(self, request):
         try:
             user = request.user
-            follow_requests = FollowRequest.objects.filter(to_user=user)
-            serializer = FollowRequestSerializer(follow_requests, many=True)
-            follow_request_count = follow_requests.count()
-            return Response({'status':'success','count':follow_request_count,'data':serializer.data}, status=status.HTTP_200_OK)
+            follow_requests = FollowRequest.objects.filter(to_user=user).order_by('-id')
+            paginator = CustomPagination()
+            paginated_data = paginator.paginate_queryset(follow_requests, request)
+            serializer = FollowRequestSerializer(paginated_data, many=True, context={'from_user':user})
+            # follow_request_count = follow_requests.count()
+            response_data = {
+                    'status': 'success',
+                    'message': 'Follow requests retrieved successfully',
+                    # 'follow_request_count':follow_request_count,
+                    'data': serializer.data, 
+                    'count': paginator.page.paginator.count, 
+                    'next': paginator.get_next_link(), 
+                    'previous': paginator.get_previous_link(),
+                }
+            return Response(response_data, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -169,9 +199,19 @@ class FollowersView(APIView):
         try:
             user = request.user
             # print(user,'user**********')
-            followers = FollowRequest.objects.filter(to_user=user)
-            serializer = FollowersListSerializer(followers, many=True)
-            return Response({'status': 'success', 'data': serializer.data}, status=status.HTTP_200_OK)
+            followers = FollowRequest.objects.filter(to_user=user, status='accepted').order_by('-id')
+            paginator = CustomPagination()
+            paginated_data = paginator.paginate_queryset(followers, request)
+            serializer = FollowersListSerializer(paginated_data, many=True)
+            response_data = {
+                    'status': 'success',
+                    'message': 'Followers data retrieved successfully',
+                    'data': serializer.data, 
+                    'count': paginator.page.paginator.count, 
+                    'next': paginator.get_next_link(), 
+                    'previous': paginator.get_previous_link(),
+                }
+            return Response(response_data, status=status.HTTP_200_OK)
         except Exception as e:  
             return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
@@ -184,9 +224,19 @@ class FollowingView(APIView):
         try:
             user = request.user
             # print(user,'user**********')
-            following = FollowRequest.objects.filter(from_user=user)
-            serializer = FollowingListSerializer(following, many=True)
-            return Response({'status': 'success', 'data': serializer.data}, status=status.HTTP_200_OK)
+            following = FollowRequest.objects.filter(from_user=user,status='accepted').order_by('-id')
+            paginator = CustomPagination()
+            paginated_data = paginator.paginate_queryset(following, request)
+            serializer = FollowingListSerializer(paginated_data, many=True)
+            response_data = {
+                    'status': 'success',
+                    'message': 'Following data retrieved successfully',
+                    'data': serializer.data, 
+                    'count': paginator.page.paginator.count, 
+                    'next': paginator.get_next_link(), 
+                    'previous': paginator.get_previous_link(),
+                }
+            return Response(response_data, status=status.HTTP_200_OK)
         except Exception as e:  
             return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
@@ -213,3 +263,39 @@ class UnFollowView(APIView):
                 
         except Exception as e:
             return Response({'status': 'error', 'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+
+class SearchUserView(APIView):
+    renderer_classes = [UserRenderer]
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+
+    def get(self, request):
+        try:
+            user = request.user
+            search_query = request.query_params.get('search_query')
+            if search_query:
+                users = Profile.objects.filter(
+                    Q(user__username__icontains=search_query) |
+                    Q(user__first_name__icontains=search_query) 
+                ).exclude(user__id=user.id).order_by('-id')
+                # print(users,'users******')
+                if not users:
+                    return Response({'status': 'error', 'message': 'No users found'}, status=status.HTTP_400_BAD_REQUEST)
+                paginator = CustomPagination()
+                paginated_data = paginator.paginate_queryset(users, request)
+                serializer = SearchUserSerializer(paginated_data, many=True)
+                response_data = {
+                    'status': 'success',
+                    'message': 'Users retrieved successfully',
+                    'data': serializer.data, 
+                    'count': paginator.page.paginator.count, 
+                    'next': paginator.get_next_link(), 
+                    'previous': paginator.get_previous_link(),
+                }
+                return Response(response_data, status=status.HTTP_200_OK)
+
+            else:
+                return Response({'status': 'error', 'message': 'Search query is required'}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({'status':'error','message':str(e)},status=status.HTTP_500_INTERNAL_SERVER_ERROR)

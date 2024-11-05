@@ -66,6 +66,30 @@ class UserEducationalDataSerializer(serializers.ModelSerializer):
         fields = ('id','user_profile', 'course', 'school', 'university', 'start_date', 'end_date', 'still_studying', )
         read_only_fields = ('user_profile',)
 
+class ResetPasswordSerializer(serializers.ModelSerializer):
+    current_password = serializers.CharField(style={'input_type': 'password'}, write_only=True)
+    confirm_password = serializers.CharField(style={'input_type': 'password'}, write_only=True)
+    new_password = serializers.CharField(style={'input_type': 'password'}, write_only=True)
+    class Meta:
+        model = CustomUser
+        fields = ['id','current_password','new_password','confirm_password']
+
+    def validate(self,data):
+        current_password = data.get('current_password')
+        confirm_password = data.get('confirm_password')
+        new_password = data.get('new_password')
+        if not self.instance.check_password(current_password):
+            raise serializers.ValidationError("Current password is incorrect")
+        if current_password == confirm_password:
+            raise serializers.ValidationError("New password cannot be the same as current password")
+        if confirm_password != new_password:
+            raise serializers.ValidationError("New password and confirm password do not match")
+        return data
+
+    def update(self, instance, validated_data):
+        instance.set_password(validated_data['new_password'])
+        instance.save()
+        return instance
 
 class ProfileSerializer(serializers.ModelSerializer):
     user_professional_data = UserProfessionalDataSerializer(many=True)
@@ -233,3 +257,9 @@ class FollowingListSerializer(serializers.ModelSerializer):
     class Meta:
         model = FollowRequest
         fields = ['id','to_user','status']
+
+class SearchUserSerializer(serializers.ModelSerializer):
+    user = UserSerializer()
+    class Meta:
+        model = Profile
+        fields = ['id','user','image','bio']

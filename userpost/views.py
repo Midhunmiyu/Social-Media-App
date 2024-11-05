@@ -7,6 +7,9 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.response import Response
 from rest_framework import status
 from userpost.models import *
+from user.paginations import CustomPagination
+from userpost.throttles import PostCommentThrottle, PostLikeThrottle
+
 
 class PostCreateView(APIView):
     renderer_classes = [UserRenderer]
@@ -24,9 +27,19 @@ class PostCreateView(APIView):
                     return Response({'status': 'success', 'data': serializer.data}, status=status.HTTP_200_OK)
                 except Posts.DoesNotExist:
                     return Response({'status': 'error', 'message': 'Post not found or does not belong to you'}, status=status.HTTP_404_NOT_FOUND)
-            posts = Posts.objects.filter(user=user)
-            serializers = PostSerializer(posts,many=True)
-            return Response({'status':'success','data':serializers.data},status= status.HTTP_200_OK)
+            posts = Posts.objects.filter(user=user).order_by('-id')
+            paginator = CustomPagination()
+            paginated_data = paginator.paginate_queryset(posts, request)
+            serializers = PostSerializer(paginated_data,many=True)
+            response_data = {
+                    'status': 'success',
+                    'message': 'Posts retrieved successfully',
+                    'data': serializers.data, 
+                    'count': paginator.page.paginator.count, 
+                    'next': paginator.get_next_link(), 
+                    'previous': paginator.get_previous_link(),
+                }
+            return Response(response_data,status= status.HTTP_200_OK)
         except Exception as e :
             return Response({'status':'error','message':str(e)},status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -74,6 +87,7 @@ class PostLikeView(APIView):
     renderer_classes = [UserRenderer]
     permission_classes = [IsAuthenticated]
     authentication_classes = [JWTAuthentication]
+    throttle_classes = [PostLikeThrottle]
 
     def get(self,request):
         try:
@@ -81,15 +95,29 @@ class PostLikeView(APIView):
             post = Posts.objects.filter(id=post_id).first()
             if not post:
                 return Response({'status': 'error', 'message': 'Post not found'}, status=status.HTTP_404_NOT_FOUND)
-            like = Like.objects.filter(user_post=post,liked_by=request.user).first()
+            like = Like.objects.filter(user_post=post).order_by('-id')
             if not like:
                 return Response({'status': 'error', 'message': 'Like not found'}, status=status.HTTP_404_NOT_FOUND)
-            serializer = LikeSerializer(like)
-            return Response({'status':'success','data':serializer.data},status=status.HTTP_200_OK)
+            paginator = CustomPagination()
+            paginated_data = paginator.paginate_queryset(like, request)
+
+            serializer = LikeSerializer(paginated_data,many=True)
+            response_data = {
+                'status': 'success',
+                'message': 'Likes retrieved successfully',
+                'data': serializer.data, 
+                'count': paginator.page.paginator.count,
+                'next': paginator.get_next_link(),
+                'previous': paginator.get_previous_link(),
+            }
+            return Response(response_data,status=status.HTTP_200_OK)
         except Exception as e :
             return Response({'status':'error','message':str(e)},status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def post(self,request):
+        # self.throttle_classes = [PostLikeThrottle] #applying throttlle for post request only
+        # self.check_throttles(request)
+        
         try:
             data = request.data
             user = request.user
@@ -98,8 +126,10 @@ class PostLikeView(APIView):
                 serializers.save()
                 return Response({'status':'success','message':'liked post successfully','data':serializers.data},status=status.HTTP_200_OK)
             return Response(serializers.errors,status=status.HTTP_400_BAD_REQUEST)
+        
         except Exception as e :
             return Response({'status':'error','message':str(e)},status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
         
     def delete(self,request):
         try:
@@ -120,6 +150,7 @@ class CommentView(APIView):
     renderer_classes = [UserRenderer]
     permission_classes = [IsAuthenticated]
     authentication_classes = [JWTAuthentication]
+    throttle_classes = [PostCommentThrottle]
 
     def get(self,request):
         try:
@@ -135,9 +166,19 @@ class CommentView(APIView):
                     return Response({'status': 'error', 'message': 'Comment not found or does not belong to you'}, status=status.HTTP_404_NOT_FOUND)
             if not post:
                 return Response({'status': 'error', 'message': 'Post not found'}, status=status.HTTP_404_NOT_FOUND)
-            comments = Comment.objects.filter(user_post=post)
-            serializers = CommentSerializer(comments,many=True)
-            return Response({'status':'success','data':serializers.data},status=status.HTTP_200_OK)
+            comments = Comment.objects.filter(user_post=post).order_by('-id')
+            paginator = CustomPagination()
+            paginated_data = paginator.paginate_queryset(comments, request)
+            serializers = CommentSerializer(paginated_data,many=True)
+            response_data = {
+                'status':'success',
+                'message': 'Comments retrieved successfully',
+                'data': serializers.data,
+                'count': paginator.page.paginator.count,
+                'next': paginator.get_next_link(),
+                'previous': paginator.get_previous_link(),
+            }
+            return Response(response_data,status=status.HTTP_200_OK)
         except Exception as e :
             return Response({'status':'error','message':str(e)},status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -187,6 +228,7 @@ class ReplyCommentView(APIView):
     renderer_classes = [UserRenderer]
     permission_classes = [IsAuthenticated]
     authentication_classes = [JWTAuthentication]
+    throttle_classes = [PostCommentThrottle]
 
     def get(self,request):
         try:
@@ -194,9 +236,19 @@ class ReplyCommentView(APIView):
             comment = Comment.objects.filter(id=comment_id).first()
             if not comment:
                 return Response({'status': 'error', 'message': 'Comment not found'}, status=status.HTTP_404_NOT_FOUND)
-            replies = ReplyComment.objects.filter(comment=comment)
-            serializers = ReplyCommentSerializer(replies,many=True)
-            return Response({'status':'success','data':serializers.data},status=status.HTTP_200_OK)
+            replies = ReplyComment.objects.filter(comment=comment).order_by('-id')
+            paginator = CustomPagination()
+            paginated_data = paginator.paginate_queryset(replies, request)
+            serializers = ReplyCommentSerializer(paginated_data,many=True)
+            response_data = {
+                'status':'success',
+                'message': 'Replies retrieved successfully',
+                'data': serializers.data,
+                'count': paginator.page.paginator.count,
+                'next': paginator.get_next_link(),
+                'previous': paginator.get_previous_link(),
+            }
+            return Response(response_data,status=status.HTTP_200_OK)
         except Exception as e :
             return Response({'status':'error','message':str(e)},status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
