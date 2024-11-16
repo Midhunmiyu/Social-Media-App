@@ -1,51 +1,36 @@
-import jwt
-from channels.auth import AuthMiddlewareStack
-from django.contrib.auth.models import AnonymousUser
-from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
-from rest_framework_simplejwt.tokens import UntypedToken
-from django.conf import settings
-import logging
+from urllib.parse import parse_qs
 from channels.db import database_sync_to_async
+from django.contrib.auth.models import AnonymousUser
+from rest_framework_simplejwt.tokens import AccessToken
+from django.contrib.auth import get_user_model
 
 
-from user.models import CustomUser
+User = get_user_model()
 
-logger = logging.getLogger(__name__)
+
+@database_sync_to_async
+def get_user(scope):
+    try:
+        token_key = parse_qs(scope['query_string'].decode('utf-8'))['token'][0]
+        print(token_key,'token_key1')
+        token_key = token_key.replace("bearer ", "").strip() 
+        print(token_key,'token_key2')
+        decoded_token = AccessToken(token_key)
+        print(decoded_token,'decoded_token')
+        user_id = decoded_token['user_id']
+        print(user_id,'user_id')
+        return User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return AnonymousUser()
+    except KeyError:
+        return AnonymousUser()
+    except Exception:
+        return AnonymousUser()
 
 class TokenAuthMiddleware:
     def __init__(self, inner):
         self.inner = inner
 
     async def __call__(self, scope, receive, send):
-        headers = dict(scope['headers'])
-        user = AnonymousUser()  # Default to AnonymousUser
-        
-        if b'authorization' in headers:
-            try:
-                # Extract token from 'Authorization: Bearer <token>'
-                authorization_header = headers[b'authorization'].decode()
-                token_name, token_key = authorization_header.split()
-
-                if token_name.lower() == 'bearer':  # Ensure token format is Bearer
-                    # Decode and validate the token using SimpleJWT
-                    try:
-                        # Decode the token
-                        payload = jwt.decode(token_key, settings.SECRET_KEY, algorithms=['HS256'])
-                        # Get the user ID from the payload and fetch the user
-                        user_id = payload.get('user_id')
-                        user = await database_sync_to_async(CustomUser.objects.get)(id=user_id)
-                        logger.info(f"Authenticated user: {user.username}")
-                    except (InvalidToken, TokenError) as e:
-                        logger.error(f"Invalid token: {e}")
-                        user = AnonymousUser()  # Invalid token, fall back to AnonymousUser
-            except ValueError:
-                logger.error("Authorization header is not in Bearer format.")
-        
-        # Set the user in the scope
-        scope['user'] = user
-
-        # Pass the scope to the next layer
+        scope['user'] = await get_user(scope)
         return await self.inner(scope, receive, send)
-
-# Wrapper to apply this middleware stack
-TokenAuthMiddlewareStack = lambda inner: TokenAuthMiddleware(AuthMiddlewareStack(inner))

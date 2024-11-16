@@ -22,7 +22,7 @@ class MyChatConsumer(AsyncConsumer):
         print(self.scope['user'],'user**********')
         group =  await database_sync_to_async(ChatRoom.objects.get)(name=self.group_name)
         if self.scope['user'].is_authenticated:
-            chat = ChatMessage(sender=self.scope['user'],room=group,message=data['message'])
+            chat = ChatMessage(sender_id=self.scope['user'].id,room=group,message=data['message'])
             await database_sync_to_async(chat.save)()
             data['user'] = self.scope['user'].username
             await self.channel_layer.group_send(self.group_name, {

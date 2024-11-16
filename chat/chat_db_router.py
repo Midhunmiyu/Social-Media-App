@@ -29,4 +29,6 @@ class ChatDBRouter:
     def allow_migrate(self, db, app_label, model_name=None, **hints):
         if app_label == 'chat':
             return db == 'chat_db'
+        if app_label == 'user':
+            return db == 'default'
         return None
