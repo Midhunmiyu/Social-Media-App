@@ -19,7 +19,7 @@ class MyChatConsumer(AsyncConsumer):
 
     async def websocket_receive(self,event):
         data = json.loads(event['text'])
-        print(self.scope['user'],'user**********')
+        # print(self.scope['user'],'user**********')
         group =  await database_sync_to_async(ChatRoom.objects.get)(name=self.group_name)
         if self.scope['user'].is_authenticated:
             chat = ChatMessage(sender_id=self.scope['user'].id,room=group,message=data['message'])

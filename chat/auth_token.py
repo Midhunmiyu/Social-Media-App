@@ -12,13 +12,13 @@ User = get_user_model()
 def get_user(scope):
     try:
         token_key = parse_qs(scope['query_string'].decode('utf-8'))['token'][0]
-        print(token_key,'token_key1')
+        # print(token_key,'token_key1')
         token_key = token_key.replace("bearer ", "").strip() 
-        print(token_key,'token_key2')
+        # print(token_key,'token_key2')
         decoded_token = AccessToken(token_key)
-        print(decoded_token,'decoded_token')
+        # print(decoded_token,'decoded_token')
         user_id = decoded_token['user_id']
-        print(user_id,'user_id')
+        # print(user_id,'user_id')
         return User.objects.get(id=user_id)
     except User.DoesNotExist:
         return AnonymousUser()

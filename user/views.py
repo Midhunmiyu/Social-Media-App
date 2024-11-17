@@ -278,7 +278,7 @@ class SearchUserView(APIView):
                 users = Profile.objects.filter(
                     Q(user__username__icontains=search_query) |
                     Q(user__first_name__icontains=search_query) 
-                ).exclude(user__id=user.id).order_by('-id')
+                ).exclude(user__id=user.id).select_related('user').order_by('-id')
                 # print(users,'users******')
                 if not users:
                     return Response({'status': 'error', 'message': 'No users found'}, status=status.HTTP_400_BAD_REQUEST)
