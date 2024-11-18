@@ -6,10 +6,11 @@ from .models import *
 
 class UserCreateSerializer(serializers.ModelSerializer):
     password2 = serializers.CharField(style={'input_type': 'password'}, write_only=True)
+    fcm = serializers.CharField(max_length=255, required=True)
 
     class Meta:
         model = CustomUser
-        fields = ['id','username', 'email', 'first_name', 'last_name', 'phone', 'gender', 'dob', 'tc','password', 'password2']
+        fields = ['id','username', 'email', 'first_name', 'last_name', 'phone', 'gender', 'dob', 'tc','password', 'password2','fcm']
         # extra_kwargs = {'password': {'write_only': True}}
 
     def validate(self, data):
@@ -23,6 +24,8 @@ class UserCreateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Username should only contain alphabets, numbers, and _")
         if data['password'] != data['password2']:
             raise serializers.ValidationError("Passwords didn't match")
+        if not data['fcm']:
+            raise serializers.ValidationError("FCM token is required")
         return data
 
     def create(self, validated_data):

@@ -92,6 +92,16 @@ class CustomUser(AbstractBaseUser):
         return self.is_admin
 
 
+class UserFcms(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    fcm = models.TextField(null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def get_fcm_token(self):
+        return self.fcm
+
 def user_image_directory_path(instance, filename):
     return f'{instance.user.username}_profile/{filename}'
 

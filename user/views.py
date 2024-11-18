@@ -35,10 +35,14 @@ class LoginView(APIView):
     def post(self, request):
         username = request.data['username']
         password = request.data['password']
+        fcm = request.data.get('fcm')
         try:
             user = authenticate(request, username=username, password=password)
             # print(user,'user**********')
             if user is not None:
+                user_fcm, created = UserFcms.objects.get_or_create(user=user)
+                user_fcm.fcm = fcm
+                user_fcm.save()
                 refresh = RefreshToken.for_user(user)
                 access_token = str(refresh.access_token)
                 refresh_token = str(refresh)
@@ -58,8 +62,12 @@ class LogoutView(APIView):
         # print(request.data,'data*********')
         try:
             refresh_token = request.data['refresh_token']
+            user_fcm = UserFcms.objects.filter(user=request.user).first()
+            if user_fcm:
+                user_fcm.delete()
             token = RefreshToken(refresh_token)
             token.blacklist()
+            
             return Response({'status': 'success','message': 'Logout successfully'}, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({'status': 'error','message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

@@ -13,6 +13,9 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 import os
 from pathlib import Path
 from datetime import timedelta
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -22,10 +25,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-^&yss#lu*m1+a$z#k3)v4vdzmjox!!9wh=58u4!i)#pd@ni8lo'
+SECRET_KEY = os.getenv('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DEBUG')
 
 ALLOWED_HOSTS = ['*']
 
@@ -89,19 +92,19 @@ ASGI_APPLICATION = 'social.asgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'social',
-        'USER': 'postgres',
-        'PASSWORD': '8157',
-        'HOST': 'localhost',
-        'PORT': '5432'
+        'NAME': os.getenv('DB_NAME1'),
+        'USER': os.getenv('DB_USER1'),
+        'PASSWORD': os.getenv('DB_PASS1'),
+        'HOST': os.getenv('DB_HOST1'),
+        'PORT': os.getenv('DB_PORT1')
     },
     'chat_db': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'social_chat',
-        'USER': 'root',
-        'PASSWORD': '',
-        'HOST': 'localhost',
-        'PORT': '3306'
+        'NAME': os.getenv('DB_NAME2'),
+        'USER': os.getenv('DB_USER2'),
+        'PASSWORD': os.getenv('DB_PASS2'),
+        'HOST': os.getenv('DB_HOST2'),
+        'PORT': os.getenv('DB_PORT2')
     }
 }
 
@@ -171,7 +174,7 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 MEDIA_URL = '/media/'
 
 
-#chat settings
+#channel settings
 
 CHANNEL_LAYERS = {
     "default": {
